@@ -30,50 +30,55 @@ bucketParams = {
 }
 
 let result = []
-function ResultPush(key) { 
+
+function ResultPush(key) {
   result.push(key)
+}
+
+function getFaces(img) {
+  result = []
+  for (let i = 0; i < img.length; i++) {
+    const image = img[i]
+    client.compareFaces({
+      SourceImage: {
+        S3Object: {
+          Bucket: 'uploadexamples3',
+          Name: 'faustao.png'
+        }
+      },
+      TargetImage: {
+        S3Object: {
+          Bucket: "uploadexamples3",
+          Name: image.Key
+        }
+      },
+      SimilarityThreshold: 70
+    }, function (e, r) {
+      if (e) {
+        console.log(e)
+      } else {
+        if (r.FaceMatches.length > 0) {
+          ResultPush('https://uploadexamples3.s3.us-east-2.amazonaws.com/' + image.Key)
+        } else {
+          console.log('no matches in ' + image.Key)
+        }
+      }
+    })
+  }
+  return result
 }
 
 app.get('/', async (req, res) => {
   try {
-    let final
     s3.listObjects(bucketParams, function (err, data) {
       if (err) {
         console.log("Error", err)
       } else {
-        data.Contents.forEach(img => {
-          client.compareFaces({
-            SourceImage: {
-              S3Object: {
-                Bucket: 'uploadexamples3',
-                Name: 'faustao.png'
-              }
-            },
-            TargetImage: {
-              S3Object: {
-                Bucket: "uploadexamples3",
-                Name: img.Key
-              }
-            },
-            SimilarityThreshold: 70
-          }, function (e, r) {
-            if (e) {
-              console.log(e)
-            } else {
-              if (r.FaceMatches.length > 0) {
-                ResultPush(img.Key)
-                // console.log('face found in: ' + 'https://uploadexamples3.s3.us-east-2.amazonaws.com/' + img.Key)
-              } else {
-                console.log('no matches ' )
-              }
-            }
-          })
-        })
+        getFaces(data.Contents)
       }
     })
     res.send(result)
   } catch (e) {
     console.log(e)
   }
-
 })
